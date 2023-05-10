@@ -114,7 +114,6 @@ def inference(img, lang):
     bounds = reader.readtext(img)
     img = PIL.Image.fromarray(img)
     draw_boxes(img, bounds)
-    img.save('result.jpg')
     return ['result.jpg', bounds]
 
 def main():

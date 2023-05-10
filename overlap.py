@@ -28,14 +28,18 @@ import matplotlib.pyplot as plt
 from shapely.geometry import LineString, Polygon
 import streamlit as st
 
-"""##Human Segmentation Model and Functions """
+##Human Segmentation Model and Functions 
 
 #______________________________run_once_______________________
 #Human segmentation Model and functions
+
 pytesseract.pytesseract.tesseract_cmd="E:\\Downloads\\Streamlit\\text_image\\Tesseract-OCR\\tesseract.exe"
-
-model = from_pretrained_keras("keras-io/deeplabv3p-resnet50")
-
+@st.cache_data()
+def get_model():
+    st.write("Fetching Model")
+    model = from_pretrained_keras("keras-io/deeplabv3p-resnet50")
+    return model
+model = get_model()
 colormap = np.array([[0,0,0], [31,119,180], [44,160,44], [44, 127, 125], [52, 225, 143],
                     [217, 222, 163], [254, 128, 37], [130, 162, 128], [121, 7, 166], [136, 183, 248],
                     [85, 1, 76], [22, 23, 62], [159, 50, 15], [101, 93, 152], [252, 229, 92],
@@ -94,7 +98,7 @@ def resize_image(image, size):
     resized_image = tf.image.resize(image, size, method=tf.image.ResizeMethod.BILINEAR)
     return resized_image
 
-"""## Function to get Text data """
+## Function to get Text data 
 
 #___________________run_once________________________
 # Function to Get Text data 
@@ -113,74 +117,90 @@ def inference(img, lang):
     img.save('result.jpg')
     return ['result.jpg', bounds]
 
-"""## Give input here """
+def main():
+    """## Give input here """
 
-#Taking input file name 
-img = cv2.imread('5_NoOverlap.png')
+    #Taking input file name 
+    file= st.file_uploader("Choose image file")
+    # img = cv2.imread('1_Overlap.png')
+    if file is not None:
+        img = file.read()
+        npimg = np.frombuffer(img, np.uint8)
+        img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+        img = cv2.resize(img, (512, 512))
+        Original = img
+        st.image(Original, caption='Original Image', use_column_width=True)
 
-img = cv2.resize(img, (512, 512))
-Original = img
+##Extracting text data info  
 
-"""##Extracting text data info  """
+    #Get data
+    if file is not None:
+        result = inference(img, ['en'])
+            #Getting text boxes 
+        first_lists = [t[0] for t in result[1]]
+        boxed = []
+        for i in range(len(first_lists)):
+            boxed.append(first_lists[i])
 
-#Get data
-result = inference(img, ['en'])
-#Getting text boxes 
-first_lists = [t[0] for t in result[1]]
-boxed = []
-for i in range(len(first_lists)):
-  boxed.append(first_lists[i])
+        ## Getting human segmentation area
 
-"""## Getting human segmentation area"""
+        #Getting Human Segmentation
 
-#Getting Human Segmentation
+        input = img
+        result = segmentation(input)
+        results = np.array(result[1])
+        image = results
 
-input = img
-result = segmentation(input)
-results = np.array(result[1])
-image = results
+        #Getting edges from segmented image
 
-#Getting edges from segmented image
+        blur = cv2.GaussianBlur(image, (3, 3), 0)
+        # Apply Canny edge detection
+        edges = cv2.Canny(blur, 100, 200)
 
-blur = cv2.GaussianBlur(image, (3, 3), 0)
-# Apply Canny edge detection
-edges = cv2.Canny(blur, 100, 200)
+        # Find contours
+        contours, hierarchy = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-# Find contours
-contours, hierarchy = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Making polygon of the contour 
 
-# Making polygon of the contour 
+        contoured = [tuple(x) for sublist in contours for x in sublist]
+        coords = [pt[0] for pt in contoured]
+        curve = Polygon(coords)
 
-contoured = [tuple(x) for sublist in contours for x in sublist]
-coords = [pt[0] for pt in contoured]
-curve = Polygon(coords)
+        """## See images"""
 
-"""## See images"""
+        # See Edged image 
+        # plt.imshow(edges)
+        # plt.title(" Edged Image ")
+        # plt.show()
+        st.image(edges, caption='Edged Image', use_column_width=True)
 
-# See Edged image 
-plt.imshow(edges)
-plt.show()
+        # See Image 
+        # plt.imshow(Original)
+        # plt.title(" Original Image ")
+        # plt.show()
 
-# See Image 
-plt.imshow(Original)
-plt.show()
 
-"""## The Output"""
+        """## The Output"""
 
-# The output 
-val = 0
-tot =0
-for i in range(len(boxed)):
-# create a Polygon object from the box points
-  box = Polygon(boxed[i])
-  # check if the curve intersects with the box
-  if curve.intersects(box):
-      val+=1
-      tot+=1
-  else:
-      tot+=1
-if (float(val/tot)>0.1):
-  print(" Overlapped ")
-else:
-  print("Not overlapped ")
-
+        # The output 
+        val = 0
+        tot =0
+        for i in range(len(boxed)):
+            # create a Polygon object from the box points
+            box = Polygon(boxed[i])
+            # check if the curve intersects with the box
+            if curve.intersects(box):
+                val+=1
+                tot+=1
+            else:
+                tot+=1
+        if (float(val/tot)>0.1):
+        #   print(" Overlapped ")
+            st.write("Overlapped")
+        else:
+        #   print("Not overlapped ")
+            st.write(" Not overlapped")
+    else:
+        st.write("Upload Image")
+    
+main()

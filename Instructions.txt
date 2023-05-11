@@ -1,9 +1,10 @@
 This file contains possible errors or problems one may cause while running the code and their possible solutions and precautions.
+1) To RUN the python file, enter "streamlit run overlap.py" in the terminal.
 
-1) You may have problem in fetching pytesseract (Line 36), where we have to install pytesseract and put it into our directory. 
+2) You may have problem in fetching pytesseract (Line 36), where we have to install pytesseract and put it into our directory. 
 For this you can follow this video 
 https://youtu.be/DG5D8A3zi4o 
 
-2) If you are using notebook version (.ipynb) then the cells with comment written "run just once", run them once only. This will save a lot of time.
+3) If you are using notebook version (.ipynb) then the cells with comment written "run just once", run them once only. This will save a lot of time.
 
-3) In notebook version, you will have not get the streamlit webapp experience which is there in python version (.py).
+4) In notebook version, you will have not get the streamlit webapp experience which is there in python version (.py).
